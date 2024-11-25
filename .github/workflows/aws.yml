@@ -4,33 +4,69 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
-  test_and_deploy:
+  code-checks:
+    name: Code Validation
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      # Step 1: Checkout the code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
+      # Step 2: Install Node.js
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Install dependencies
+      # Step 3: Install dependencies
+      - name: Install Dependencies
         run: npm install
 
-      - name: Run Unit Tests
-        run: npm test -- --watchAll=false
-        env:
-          CI: true # Ensures Jest exits after tests complete
+      # Step 4: Lint the code
+      - name: Lint Code
+        run: npm run lint
 
+      # Step 5: Run unit tests
+      - name: Run Unit Tests
+        run: npm test
+        env:
+          CI: true
+
+      # Step 6: Build the application
       - name: Build Application
         run: npm run build
 
+  deploy:
+    name: Deploy to S3
+    runs-on: ubuntu-latest
+    needs: code-checks
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Install Node.js
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      # Step 3: Install dependencies and build
+      - name: Install Dependencies and Build
+        run: |
+          npm install
+          npm run build
+
+      # Step 4: Deploy to S3
       - name: Deploy to S3
-        if: success() # Deploy only if tests pass
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
